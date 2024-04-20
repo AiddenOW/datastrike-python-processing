@@ -2,3 +2,4 @@
 __pycache__/
 .idea/
 ./src/logs
+./src/map_creation/data
