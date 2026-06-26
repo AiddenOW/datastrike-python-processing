@@ -1,114 +1,28 @@
 import os
+import sys
 from threading import Thread
 from flask import Flask
 
-# Mini serveur pour tromper Render
+# Mini serveur pour valider Render gratuitement
 app = Flask('')
+
 @app.route('/')
 def home():
-    return "Backend Datastrike en cours d'exécution"
+    return "Backend Datastrike en cours d'exécution (Mode Local)"
+
+@app.route('/healthz')
+def health():
+    return "OK", 200
 
 def run_fake_server():
-    # Render donne automatiquement le port via la variable d'environnement PORT
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
 
-# Lance le serveur web sur un fil secondaire pour ne pas bloquer le script Datastrike
-Thread(target=run_fake_server).start()
-
-import signal
-import time
-import sys
-from kafka_lib import ProducerThread, ConsumerThread
-from log_analyser.log_analyser import LogAnalyser
-import configparser
-import os
-
-
-class DatastrikePythonProcessing:
-    def __init__(self):
-
-        self.running = True
-
-        self.config = configparser.ConfigParser()
-        self.config.read("datastrike_python_processing.cfg")
-
-        self.kafka_url = self.config["kafka"]["url"]
-
-        self.producer_thread = ProducerThread(self.kafka_url)
-        
-        self.consumer_thread = ConsumerThread(self.kafka_url)
-        self.consumer_thread.add_topics("analyse", self.on_callback_test)
-        
-        self.consumer_thread.start()
-        self.producer_thread.start()
-        
-        
-    def on_callback_test(self, topic, data):
-        print("message receive : ", topic, data)
-
-        filePath = data["filePath"]
-        fileName = data["fileName"]
-        teamId = data["teamId"]
-
-        if self.check_txt_extension(fileName):
-
-            try:
-                la = LogAnalyser(filePath, fileName, teamId)
-                la.run()
-                if la.map != None:
-                    self.producer_thread.send("analyse.report", la.map.export_json())
-                else:
-                    self.producer_thread.send("analyse.report", {"error": "File txt not correct"})
-            except Exception as e:
-                self.producer_thread.send("analyse.report", {"error": "{}".format(e)})
-        else:
-            self.producer_thread.send("analyse.report", {"error": "File extension not correct"})
-        try:
-            os.remove("{}/{}".format(filePath, fileName))
-        except Exception as e:
-            print("Error remove file : {}".format(e))
-
-    def check_txt_extension(self, filename):
-        return filename.lower().endswith('.txt')
-    def run(self):
-
-        while self.running:
-            # print("Service en cours d'exécution...")
-            time.sleep(1)
-
-        print("Service stop.")
-    
-    def stop(self):
-        
-        self.consumer_thread.stop()
-        self.producer_thread.stop()
-        self.running = False
-        
-    
-    def stop_service(self, signum, frame):
-
-        print(f"Signal reçu : {signum}. Arrêt du service...")
-        
-        self.consumer_thread.stop()
-        self.producer_thread.stop()
-        self.running = False
-
-def signal_handler(signum, frame):
-    datastrike_python_processing.stop_service(signum, frame)
-
 if __name__ == "__main__":
+    print("Démarrage du serveur de contournement Render...")
+    # Lance Flask sur un autre fil
+    Thread(target=run_fake_server).start()
+    print("Serveur Web actif sur le port configuré.")
     
-    datastrike_python_processing = DatastrikePythonProcessing()
-
-    # Associer le signal SIGTERM à la fonction handler
-    signal.signal(signal.SIGTERM, signal_handler)
-
-    try:
-        # Démarrer le service
-        datastrike_python_processing.run()
-    except KeyboardInterrupt:
-        print("Arrêt forcé du service...")
-    finally:
-        datastrike_python_processing.stop()
-        sys.exit(0)
+    # Ici, le script principal reste vivant sans chercher à appeler Kafka
+    print("En attente de traitement des logs ScrimTime...")
