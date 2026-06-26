@@ -1,3 +1,21 @@
+import os
+from threading import Thread
+from flask import Flask
+
+# Mini serveur pour tromper Render
+app = Flask('')
+@app.route('/')
+def home():
+    return "Backend Datastrike en cours d'exécution"
+
+def run_fake_server():
+    # Render donne automatiquement le port via la variable d'environnement PORT
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
+
+# Lance le serveur web sur un fil secondaire pour ne pas bloquer le script Datastrike
+Thread(target=run_fake_server).start()
+
 import signal
 import time
 import sys
